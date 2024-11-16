@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import cloudinary
 from flask_login import LoginManager
 
+
 app= Flask(__name__)
 app.secret_key= '#$%^&GYVGS^D%^&^&YSDGVYF%S&^^&SGD'
 app.config['SQLALCHEMY_DATABASE_URI']='mysql+pymysql://root:12345678@localhost/saledb?charset=utf8mb4'
@@ -17,3 +18,4 @@ cloudinary.config(
 
 db= SQLAlchemy(app=app)
 login= LoginManager(app=app)
+

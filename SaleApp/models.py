@@ -2,30 +2,36 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Foreig
 from sqlalchemy.orm import relationship
 from SaleApp import db
 from datetime import datetime
-from SaleApp import app
+from SaleApp import app, login
 from enum import Enum as UserEnum
 from flask_login import UserMixin
+import utils
+from flask_login import login_user
 
 class BaseModel(db.Model):
     __abstract__ = True
     #bat khong tao bang
     id= Column(Integer, primary_key= True, autoincrement= True)
+
 class UserRole(UserEnum):
-    ADMIN = 1
-    USER = 2
+    ADMIN= 1
+    USER= 2
+
 
 class User(BaseModel, UserMixin):
-    name= Column(String(50), nullable=False)
-    username= Column(String(50), nullable=False, unique=True)
-    password = Column(String(50), nullable=False)
-    avatar= Column(String(100))
-    email = Column(String(50))
-    active = Column(Boolean, default=True)
-    joined_date = Column(DateTime, default=datetime.now())
-    user_role = Column(Enum(UserRole), default=UserRole.USER)
+    name = Column(String(50), nullable=False)
+    username= Column(String(50), nullable=False, unique= True)
+    password= Column(String(50), nullable=False)
+    avatar= Column(String(50))
+    email= Column(String(50))
+    active= Column(Boolean, default=True)
+    joined_date= Column(DateTime, default=datetime.now())
+    user_role= Column(Enum(UserRole), default=UserRole.USER)
+    receipts= relationship('Receipt', backref='user', lazy=True)
 
     def __str__(self):
         return self.name
+
 
 class Category(BaseModel):
     __tablename__ = 'category'
@@ -46,9 +52,28 @@ class Product(BaseModel):
     active= Column(Boolean, default=True)
     created_date= Column(DateTime, default=datetime.now())
     category_id= Column(Integer, ForeignKey(Category.id), nullable=False) # su dung ten lop doi tuong
+    receipt_details = relationship('ReceiptDetail', backref='product', lazy=True)
     #category_id = Column(Integer, ForeignKey('category.id')) #su dung ten bang du lieu
     def __str__(self):
         return self.name
+
+class Receipt(db.Model):
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_date = Column(DateTime, default=datetime.now())
+    updated_date = Column(DateTime, default=datetime.now())
+    details = relationship('ReceiptDetail', backref='receipt', lazy=True)
+
+
+class ReceiptDetail(db.Model):
+    product_id = Column(Integer, ForeignKey(Product.id), primary_key=True)
+    receipt_id = Column(Integer, ForeignKey(Receipt.id), primary_key=True)
+    quantity = Column(Integer, default=0)
+    unit_price = Column(Float, default=0)
+
+
+@login.user_loader
+def user_load(user_id):
+    return utils.get_user_by_id(user_id=user_id)
 
 if __name__ == '__main__':
     with app.app_context():
