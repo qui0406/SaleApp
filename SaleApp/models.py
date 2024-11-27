@@ -6,12 +6,13 @@ from SaleApp import app, login
 from enum import Enum as UserEnum
 from flask_login import UserMixin
 import utils
-from flask_login import login_user
 
 class BaseModel(db.Model):
     __abstract__ = True
     #bat khong tao bang
     id= Column(Integer, primary_key= True, autoincrement= True)
+    created_date= Column(DateTime, default= datetime.now())
+    active= Column(Boolean, default= True)
 
 class UserRole(UserEnum):
     ADMIN= 1
@@ -24,19 +25,16 @@ class User(BaseModel, UserMixin):
     password= Column(String(50), nullable=False)
     avatar= Column(String(50))
     email= Column(String(50))
-    active= Column(Boolean, default=True)
-    joined_date= Column(DateTime, default=datetime.now())
     user_role= Column(Enum(UserRole), default=UserRole.USER)
-    receipts= relationship('Receipt', backref='user', lazy=True)
+    receipts = relationship('Receipt', backref='user', lazy=True)
 
     def __str__(self):
         return self.name
 
-
 class Category(BaseModel):
-    __tablename__ = 'category'
+
     name= Column(String(20), nullable=False)
-    products= relationship('Product', backref='category', lazy=True)
+    products = relationship('Product', backref='category', lazy=True)
     # backref: doi tuong trong Product se them 1 category
     # lazy: lay dung thong tin cua danh muc thoi
 
@@ -44,32 +42,29 @@ class Category(BaseModel):
         return self.name
 
 class Product(BaseModel):
-    __tablename__ ='product'
+
     name= Column(String(50), nullable= False)
     description = Column(String(255))
     price = Column(Float, default=0)
     image= Column(String(100))
-    active= Column(Boolean, default=True)
-    created_date= Column(DateTime, default=datetime.now())
-    category_id= Column(Integer, ForeignKey(Category.id), nullable=False) # su dung ten lop doi tuong
-    receipt_details = relationship('ReceiptDetail', backref='product', lazy=True)
+    category_id = Column(Integer, ForeignKey(Category.id), nullable=False)# su dung ten lop doi tuong
+   # details = relationship('ReceiptDetails', backref='product', lazy=True)
     #category_id = Column(Integer, ForeignKey('category.id')) #su dung ten bang du lieu
     def __str__(self):
         return self.name
 
-class Receipt(db.Model):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    created_date = Column(DateTime, default=datetime.now())
-    updated_date = Column(DateTime, default=datetime.now())
-    details = relationship('ReceiptDetail', backref='receipt', lazy=True)
+class Receipt(BaseModel):
+    __table_args__ = {'extend_existing': True}
+    user_id = Column(Integer, ForeignKey(User.id), nullable=False)
+    details = relationship('ReceiptDetails', backref='receipt', lazy=True)
 
 
-class ReceiptDetail(db.Model):
+class ReceiptDetails(db.Model):
+    __table_args__ = {'extend_existing': True}
     product_id = Column(Integer, ForeignKey(Product.id), primary_key=True)
     receipt_id = Column(Integer, ForeignKey(Receipt.id), primary_key=True)
     quantity = Column(Integer, default=0)
     unit_price = Column(Float, default=0)
-
 
 @login.user_loader
 def user_load(user_id):
@@ -77,6 +72,7 @@ def user_load(user_id):
 
 if __name__ == '__main__':
     with app.app_context():
+
         db.create_all()
 
         # c1 = Category(name= 'Dien thoai')
@@ -88,7 +84,7 @@ if __name__ == '__main__':
         # db.session.add(c3)
         #
         # db.session.commit()
-
+        #
         # products= [{
         #   "id": 1,
         #   "name": "iPhone 7 Plus",

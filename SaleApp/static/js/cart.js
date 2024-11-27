@@ -24,3 +24,20 @@ function addToCart(id, name, price){
         console.error(err)
     })
 }
+
+function pay(){
+    if(confirm("Ban co chac chan muon thanh toan khong")==true){
+        fetch('api/pay', {
+        method: 'post'
+    }).then(function(res){
+        return res.json()
+    }).then(function(data){
+            if(data.status==200){
+                 location.reload()
+            }
+
+    }).catch(function(err){
+        console.error(err)
+    })
+    }
+}

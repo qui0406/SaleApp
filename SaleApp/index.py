@@ -1,7 +1,5 @@
 import math
-
-from flask_login import login_user, logout_user
-
+from flask_login import login_user, logout_user, login_required
 from SaleApp import app
 from flask import render_template, request, redirect, url_for, session, jsonify
 import utils
@@ -42,7 +40,8 @@ def user_register():
                 if avatar:
                     res = cloudinary.uploader.upload(avatar)
                     avatar_path= res["secure_url"]
-                utils.add_user(name=name, username=username, email=email, password=password, avatar=avatar_path)
+                utils.add_user(name= name, username= username, email= email, password= password, avatar= avatar_path)
+
                 return redirect(url_for('user_signin'))
             else:
                 err_msg="Mat khau khong khop"
@@ -51,6 +50,17 @@ def user_register():
             err_msg='He thong dang co loi: '+ str(ex)
 
     return render_template("register.html", err_msg=err_msg)
+
+@app.route('/admin-login', methods=['post'])
+def signin_admin():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    user = utils.check_login(username=username, password=password, role=UserRole.ADMIN)
+    if user:
+        login_user(user=user)
+    return redirect('/admin')
+
 
 @app.route("/user-login", methods=["get", "post"])
 def user_signin():
@@ -62,7 +72,9 @@ def user_signin():
         user = utils.check_login(username=username, password=password)
         if user:
             login_user(user=user)
-            return redirect(url_for('home'))
+
+            next= request.args.get('next', 'home')
+            return redirect(url_for(next))
         else:
             err_msg="Username hoac password khong chinh xac!!!"
     return render_template("login.html", err_msg=err_msg)
@@ -73,6 +85,7 @@ def user_signout():
     return redirect(url_for('user_signin'))
 
 @app.route("/api/add-cart", methods=["post"])
+
 def add_to_cart():
 
     data= request.json
@@ -80,9 +93,8 @@ def add_to_cart():
     name= data.get('name')
     price=data.get('price')
 
+    cart = session.get('cart')
 
-
-    cart= session.get('cart')
     if not cart:
         cart={}
 
@@ -102,12 +114,27 @@ def add_to_cart():
 
 @app.route('/cart')
 def cart():
-    return render_template('cart.html', stats= utils.count_cart(session['cart']))
+    return render_template('cart.html', stats= utils.count_cart(session.get('cart')))
 
 @app.route("/products/<int:product_id>")
 def product_detail(product_id):
     product= utils.get_product_by_id(product_id)
     return render_template('product_detail.html', product=product)
 
+@app.route('/api/pay', methods=["post"])
+@login_required
+def pay():
+    cart = session.get('cart')
+    try:
+        utils.add_receipt(cart)
+
+    except Exception as ex:
+        print(ex)
+        return jsonify({'status': 500})
+    else:
+        del session['cart']
+        return jsonify({'status': 200})
+
 if __name__ == "__main__":
+    from SaleApp.admin import *
     app.run(debug=True)

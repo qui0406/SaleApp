@@ -1,7 +1,11 @@
 import json, os
+from sqlalchemy.sql import extract
+from sqlalchemy import func
+
 from SaleApp import app, db
-from SaleApp.models import Category, Product, User
+from SaleApp.models import Category, Product, User, Receipt, ReceiptDetails, UserRole
 import hashlib
+from flask_login import current_user
 
 def read_json(path):
     # f= open(path, "r")
@@ -60,13 +64,13 @@ def count_products():
 
 def add_user(name, username, password, **kwargs):
     password= str(hashlib.md5(password.strip().encode("utf-8")).hexdigest())
-    user = User(name=name, username= username,
-                password=password, email=kwargs.get('email'),
+    user = User(name= name, username= username,
+                password= password, email= kwargs.get('email'),
                 avatar= kwargs.get("avatar"))
     db.session.add(user)
     db.session.commit()
 
-def check_login(username, password):
+def check_login(username, password, role=UserRole.USER):
     if username and password:
         password = str(hashlib.md5(password.strip().encode("utf-8")).hexdigest())
         return User.query.filter(User.username.__eq__(username.strip()),
@@ -82,9 +86,51 @@ def count_cart(cart):
         for c in cart.values():
             total_quantity+= c['quantity']
             total_amount+= c['quantity']* c['price']
-
     return{
         'total_quantity': total_quantity,
         'total_amount': total_amount
-
     }
+
+def add_receipt(cart):
+    if cart:
+        r = Receipt(user=current_user)
+        db.session.add(r)
+
+        for c in cart.values():
+            d = ReceiptDetails(quantity=c['quantity'], unit_price=c['price'],
+                               receipt=r, product_id=c['id'])
+            db.session.add(d)
+
+        db.session.commit()
+
+def category_stats():
+    # return Category.query.join(Product, Product.category_id.__eq__(Category.id), isouter= True)\
+    #         .add_columns(func.count(Product.id)).group_by(Category.id, Category.name).all()
+    return db.session.query(Category.id, Category.name, func.count(Product.id))\
+        .join(Product, Category.id.__eq__(Product.category_id), isouter= True)\
+        .group_by(Category.id, Category.name).all()
+
+def product_stats(kw=None, from_date=None, to_date=None):
+    p = db.session.query(Product.id, Product.name,
+                         func.sum(ReceiptDetails.quantity * ReceiptDetails.unit_price))\
+                    .join(ReceiptDetails, ReceiptDetails.product_id.__eq__(Product.id), isouter= True)\
+                    .join(Receipt, Receipt.id.__eq__(ReceiptDetails.receipt_id))\
+                    .group_by(Product.id, Product.name)
+    if kw:
+        p= p.filter(Product.name.contains(kw))
+    if from_date:
+        p= p.filter(Receipt.created_date.__ge__(from_date))
+    if to_date:
+        p= p.filter(Receipt.created_date.__le__(to_date))
+
+
+    return p.all()
+
+def product_month_stats(year):
+    return (db.session.query(extract('month', Receipt.created_date),
+                            func.sum(ReceiptDetails.quantity * ReceiptDetails.unit_price))\
+                .join(ReceiptDetails, ReceiptDetails.receipt_id.__eq__(Receipt.id))\
+                .filter(extract('year', Receipt.created_date)== year)\
+                .group_by(extract('month', Receipt.created_date))\
+                .order_by(extract('month', Receipt.created_date))\
+                .all())

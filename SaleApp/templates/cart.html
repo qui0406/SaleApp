@@ -27,7 +27,11 @@
     <h5>Tong tien: {{"{:,.1f}".format(stats.total_amount)}} VND</h5>
 </div>
 
-<input type="button" value="Thanh toan" class="btn btn-danger"/>
+{%if current_user.is_authenticated%}
+<input type="button" value="Thanh toan" onclick="pay()" class="btn btn-danger"/>
+{%else%}
+<a href="{{url_for('user_signin', next='cart')}}">Dang nhap de thanh toan</a>
+{%endif%}
 <br>
 <br>
 

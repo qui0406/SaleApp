@@ -27,7 +27,7 @@
                     {% if current_user.avatar %}
                     <img src="{{current_user.avatar}}" class="rounded-circle" width="30" alt="{{current_user.name}}">
                     {%else %}
-                    <!--                         <img src="{{url_for(static, filename='images/flask.png')}}"  class="rounded-cricle" width="30" alt={{current_user.name}}">-->
+                                    <img src="{{url_for('static', filename='images/p1.png')}}"  class="rounded-cricle" width="30" alt={{current_user.name}}">-->
                     {%endif%}
                     {{current_user.name}}
                 </a>
